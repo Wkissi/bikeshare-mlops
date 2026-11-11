@@ -9,6 +9,12 @@ from pydantic import ValidationError
 
 from bikeshare_mlops.config import CONFIG_FILE_ENV, get_settings
 
+PATHS = (
+    "paths: {data_dir: d, raw_dir: d/r, batches_dir: d/b, incoming_dir: d/i, processed_dir: d/p,"
+    " rejected_dir: d/x, reports_dir: r, logs_dir: l%s}\n"
+)
+DATA = "data: {source_url: 'https://example.test/a.zip', archive_sha256: '" + "a" * 64 + "'}\n"
+
 
 def test_loads_versioned_yaml() -> None:
     settings = get_settings()
@@ -24,12 +30,7 @@ def test_env_variable_overrides_yaml(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_alternative_config_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     custom = tmp_path / "custom.yaml"
-    custom.write_text(
-        "project_name: autre\n"
-        "paths: {data_dir: d, raw_dir: d/r, batches_dir: d/b, incoming_dir: d/i,"
-        " reports_dir: r, logs_dir: l}\n",
-        encoding="utf-8",
-    )
+    custom.write_text("project_name: autre\n" + PATHS % "" + DATA, encoding="utf-8")
     monkeypatch.setenv(CONFIG_FILE_ENV, str(custom))
     assert get_settings().project_name == "autre"
 
@@ -44,12 +45,7 @@ def test_unknown_key_in_section_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     custom = tmp_path / "typo.yaml"
-    custom.write_text(
-        "project_name: x\n"
-        "paths: {data_dir: d, raw_dir: d/r, batches_dir: d/b, incoming_dir: d/i,"
-        " reports_dir: r, logs_dir: l, dta_dir: oups}\n",
-        encoding="utf-8",
-    )
+    custom.write_text("project_name: x\n" + PATHS % ", dta_dir: oups" + DATA, encoding="utf-8")
     monkeypatch.setenv(CONFIG_FILE_ENV, str(custom))
     with pytest.raises(ValidationError):
         get_settings()

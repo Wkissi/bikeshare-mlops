@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -34,8 +34,22 @@ class PathsConfig(_Section):
     raw_dir: Path
     batches_dir: Path
     incoming_dir: Path
+    processed_dir: Path
+    rejected_dir: Path
     reports_dir: Path
     logs_dir: Path
+
+
+class DataConfig(_Section):
+    source_url: str
+    archive_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    csv_name: str = "hour.csv"
+    download_timeout_s: float = Field(default=60, gt=0)
+
+
+class QualityConfig(_Section):
+    min_rows: int = Field(default=500, ge=1)
+    max_report_failures: int = Field(default=200, ge=1)
 
 
 class LoggingConfig(_Section):
@@ -62,6 +76,8 @@ class Settings(BaseSettings):
 
     project_name: str
     paths: PathsConfig
+    data: DataConfig
+    quality: QualityConfig = QualityConfig()
     logging: LoggingConfig = LoggingConfig()
 
     @classmethod

@@ -55,6 +55,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "RUF"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = "-ra --cov=bikeshare_mlops --cov-report=term-missing"
 markers = [
     "integration: tests qui assemblent plusieurs composants (sans réseau)",

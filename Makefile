@@ -5,7 +5,10 @@ UV ?= uv
 RUN := $(UV) run
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test
+.PHONY: help install lint format test data next-batch invalid-batch validate
+
+COUNT ?= 1
+FILES ?= data/incoming/*.csv
 
 help: ## Liste les commandes disponibles
 	@$(RUN) python scripts/make_help.py Makefile
@@ -24,3 +27,15 @@ format: ## Reformate le code et corrige ce qui peut l'être automatiquement
 
 test: ## Lance tous les tests avec la couverture
 	$(RUN) pytest
+
+data: ## Télécharge la source UCI (checksum vérifié) et la découpe en lots mensuels
+	$(RUN) python -m bikeshare_mlops.data.ingest prepare
+
+next-batch: ## Fait arriver le(s) prochain(s) lot(s) dans data/incoming (COUNT=n)
+	$(RUN) python -m bikeshare_mlops.data.ingest release --count $(COUNT)
+
+invalid-batch: ## Dépose un lot volontairement non conforme dans data/incoming
+	$(RUN) python scripts/make_invalid_batch.py
+
+validate: ## Contrôle qualité de fichiers de lots (FILES="chemin1 chemin2")
+	$(RUN) python -m bikeshare_mlops.data.validate $(wildcard $(FILES))

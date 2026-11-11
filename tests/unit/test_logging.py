@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterator
 
 import pytest
 
 from bikeshare_mlops.utils.logging import configure_logging, get_logger
+
+
+@pytest.fixture(autouse=True)
+def _restore_root_logger() -> Iterator[None]:
+    """Remet le logger racine en état : les handlers testés écrivent dans un flux temporaire."""
+    root = logging.getLogger()
+    handlers, level = root.handlers[:], root.level
+    yield
+    root.handlers, root.level = handlers, level
 
 
 def test_json_log_contains_extra_fields(capsys: pytest.CaptureFixture[str]) -> None:
@@ -42,4 +52,3 @@ def test_level_filters_messages(capsys: pytest.CaptureFixture[str]) -> None:
     err = capsys.readouterr().err
     assert "invisible" not in err
     assert "visible" in err
-    logging.getLogger().setLevel(logging.INFO)

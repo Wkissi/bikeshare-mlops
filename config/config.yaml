@@ -7,11 +7,23 @@ project_name: bikeshare-mlops
 
 paths:
   data_dir: data
-  raw_dir: data/raw
-  batches_dir: data/batches
-  incoming_dir: data/incoming
-  reports_dir: reports
+  raw_dir: data/raw              # archive UCI et hour.csv extrait
+  batches_dir: data/batches      # lots mensuels rejouables (batch_YYYY_MM.csv)
+  incoming_dir: data/incoming    # lots « arrivés », en attente de traitement
+  processed_dir: data/processed  # lots validés, cumulés pour l'entraînement
+  rejected_dir: data/rejected    # lots refusés par les contrôles qualité
+  reports_dir: reports           # rapports de validation (JSON)
   logs_dir: logs
+
+data:
+  source_url: https://archive.ics.uci.edu/static/public/275/bike+sharing+dataset.zip
+  archive_sha256: b70182d0d0508e9abbb79306ce5c0cec34869000f8220175ac83d11dbe845401
+  csv_name: hour.csv
+  download_timeout_s: 60
+
+quality:
+  min_rows: 500                  # un mois complet compte ~700 lignes horaires
+  max_report_failures: 200       # nb max de cas d'échec détaillés dans le rapport
 
 logging:
   level: INFO
