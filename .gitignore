@@ -1,9 +1,9 @@
-# Données et artefacts générés (jamais versionnés)
-data/
-reports/
-logs/
-mlruns/
-mlartifacts/
+# Données et artefacts générés à la racine (jamais versionnés)
+/data/
+/reports/
+/logs/
+/mlruns/
+/mlartifacts/
 *.db
 
 # Secrets locaux
