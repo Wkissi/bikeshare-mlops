@@ -58,6 +58,8 @@ services:
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${POSTGRES_USER:-bikeshare}:${POSTGRES_PASSWORD:-bikeshare}@postgres:5432/prefect
       PREFECT_UI_API_URL: http://localhost:4200/api
+      # L'UI est générée au démarrage : dossier inscriptible par l'utilisateur non-root de l'image.
+      PREFECT_UI_STATIC_DIRECTORY: /home/app/prefect-ui
       PREFECT_SERVER_ANALYTICS_ENABLED: "false"
     ports:
       - "4200:4200"
