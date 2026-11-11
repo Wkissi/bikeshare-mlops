@@ -5,10 +5,11 @@ UV ?= uv
 RUN := $(UV) run
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test data next-batch invalid-batch validate
+.PHONY: help install lint format test data next-batch invalid-batch validate train-local
 
 COUNT ?= 1
 FILES ?= data/incoming/*.csv
+DATA_DIR ?= data/batches
 
 help: ## Liste les commandes disponibles
 	@$(RUN) python scripts/make_help.py Makefile
@@ -39,3 +40,6 @@ invalid-batch: ## Dépose un lot volontairement non conforme dans data/incoming
 
 validate: ## Contrôle qualité de fichiers de lots (FILES="chemin1 chemin2")
 	$(RUN) python -m bikeshare_mlops.data.validate $(wildcard $(FILES))
+
+train-local: ## Entraîne et évalue hors MLflow sur DATA_DIR (défaut : tous les lots)
+	$(RUN) python -m bikeshare_mlops.models.train --data-dir $(DATA_DIR)

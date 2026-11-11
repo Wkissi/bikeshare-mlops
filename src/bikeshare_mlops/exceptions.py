@@ -19,6 +19,10 @@ class ChecksumMismatchError(BikeshareError):
         self.actual = actual
 
 
+class InsufficientDataError(BikeshareError):
+    """Trop peu de données pour entraîner un modèle fiable."""
+
+
 class DataValidationError(BikeshareError):
     """Un lot de données ne respecte pas le contrat qualité : l'entraînement doit s'arrêter."""
 

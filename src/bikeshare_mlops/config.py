@@ -52,6 +52,24 @@ class QualityConfig(_Section):
     max_report_failures: int = Field(default=200, ge=1)
 
 
+class ModelParams(_Section):
+    """Hyperparamètres du RandomForestRegressor."""
+
+    n_estimators: int = Field(default=200, ge=1)
+    max_depth: int | None = Field(default=None, ge=1)
+    min_samples_leaf: int = Field(default=1, ge=1)
+    max_features: float = Field(default=1.0, gt=0, le=1)
+    n_jobs: int = -1
+    random_state: int = 42
+
+
+class TrainingConfig(_Section):
+    test_fraction: float = Field(default=0.2, gt=0, lt=1)
+    split_salt: str = "bikeshare"
+    min_train_rows: int = Field(default=1000, ge=1)
+    model: ModelParams = ModelParams()
+
+
 class LoggingConfig(_Section):
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     json_format: bool = True
@@ -78,6 +96,7 @@ class Settings(BaseSettings):
     paths: PathsConfig
     data: DataConfig
     quality: QualityConfig = QualityConfig()
+    training: TrainingConfig = TrainingConfig()
     logging: LoggingConfig = LoggingConfig()
 
     @classmethod
