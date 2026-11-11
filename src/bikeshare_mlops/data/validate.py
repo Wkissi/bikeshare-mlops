@@ -95,19 +95,13 @@ def _deduplicated_failures(error: SchemaErrors) -> pd.DataFrame:
     """Une anomalie par ligne et par contrôle (pandera répète les contrôles globaux par colonne)."""
     cases = error.failure_cases
     frame_level = (cases["schema_context"] == "DataFrameSchema") & cases["index"].notna()
-    per_row = (
-        cases[frame_level].drop_duplicates(subset=["check", "index"]).assign(column="<ligne>")
-    )
+    per_row = cases[frame_level].drop_duplicates(subset=["check", "index"]).assign(column="<ligne>")
     return pd.concat([cases[~frame_level], per_row], ignore_index=True)
 
 
-def _failure_records(
-    cases: pd.DataFrame, limit: int
-) -> tuple[list[dict[str, Any]], Counter[str]]:
-    by_check: Counter[str] = Counter(
-        f"{column}:{check}"
-        for column, check in zip(cases["column"].astype(str), cases["check"].astype(str), strict=True)
-    )
+def _failure_records(cases: pd.DataFrame, limit: int) -> tuple[list[dict[str, Any]], Counter[str]]:
+    labels = cases["column"].astype(str) + ":" + cases["check"].astype(str)
+    by_check: Counter[str] = Counter(labels)
     records = (
         cases[["column", "check", "failure_case", "index"]]
         .head(limit)
