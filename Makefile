@@ -24,12 +24,12 @@ install: ## Installe Python 3.11 et les dépendances figées (uv.lock)
 	$(UV) sync --frozen --all-groups
 
 lint: ## Vérifie le style et les erreurs courantes (ruff)
-	$(RUN) ruff check src tests scripts
-	$(RUN) ruff format --check src tests scripts
+	$(RUN) ruff check src tests scripts migrations
+	$(RUN) ruff format --check src tests scripts migrations
 
 format: ## Reformate le code et corrige ce qui peut l'être automatiquement
-	$(RUN) ruff check --fix src tests scripts
-	$(RUN) ruff format src tests scripts
+	$(RUN) ruff check --fix src tests scripts migrations
+	$(RUN) ruff format src tests scripts migrations
 
 test: ## Lance tous les tests avec la couverture
 	$(RUN) pytest
