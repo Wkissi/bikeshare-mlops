@@ -100,6 +100,12 @@ def record_pipeline_run(
     session.commit()
 
 
+def pipeline_run_counts(session: Session) -> dict[str, int]:
+    """Nombre de runs par état (COMPLETED, FAILED)."""
+    rows = session.execute(select(PipelineRun.state, func.count()).group_by(PipelineRun.state))
+    return {state: int(count) for state, count in rows}
+
+
 def latest_pipeline_run(session: Session) -> PipelineRun | None:
     return session.scalar(
         select(PipelineRun).order_by(PipelineRun.created_at.desc(), PipelineRun.id.desc()).limit(1)

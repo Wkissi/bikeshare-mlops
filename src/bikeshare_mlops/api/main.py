@@ -16,6 +16,7 @@ from bikeshare_mlops.api.model_service import ModelService
 from bikeshare_mlops.api.routes import router
 from bikeshare_mlops.config import Settings, get_settings
 from bikeshare_mlops.models import registry
+from bikeshare_mlops.monitoring.metrics import install_metrics, record_served_version
 from bikeshare_mlops.storage.db import build_engine, session_factory
 from bikeshare_mlops.utils.logging import configure_logging, get_logger
 
@@ -46,6 +47,7 @@ def create_app(
         settings.api.model_alias,
         lambda: registry_loader(settings),
         lambda: registry_version(settings),
+        on_loaded=record_served_version,
     )
     db_engine = engine or build_engine(settings)
 
@@ -79,5 +81,6 @@ def create_app(
     app.state.engine = db_engine
     app.state.sessions = session_factory(db_engine)
     install_error_handlers(app)
+    install_metrics(app, settings.api.rolling_mae_window)
     app.include_router(router)
     return app

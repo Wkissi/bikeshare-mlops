@@ -89,12 +89,16 @@ services:
 
   api:
     <<: *app-image
+    # Le dossier multiprocessus Prometheus est vidé à chaque démarrage (compteurs remis à zéro).
     command: >
-      uvicorn bikeshare_mlops.api.main:create_app --factory
-      --host 0.0.0.0 --port 8000 --workers ${API_WORKERS:-2} --no-access-log
+      sh -c 'rm -rf "$$PROMETHEUS_MULTIPROC_DIR" && mkdir -p "$$PROMETHEUS_MULTIPROC_DIR" &&
+      exec uvicorn bikeshare_mlops.api.main:create_app --factory
+      --host 0.0.0.0 --port 8000 --workers ${API_WORKERS:-2} --no-access-log'
     environment:
       <<: *app-database
       BIKESHARE_MLFLOW__TRACKING_URI: http://mlflow:5000
+      # Plusieurs workers uvicorn : métriques agrégées via un dossier partagé.
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus-multiproc
       # Registre injoignable : /model/reload échoue en quelques secondes (défaut MLflow : 7 essais).
       MLFLOW_HTTP_REQUEST_MAX_RETRIES: "1"
       MLFLOW_HTTP_REQUEST_TIMEOUT: "5"
@@ -135,6 +139,43 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      # Consultation sans compte (lecture seule) pour la démo ; l'édition reste réservée à l'admin.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/bikeshare.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
+  prometheus-data:
+  grafana-data:
   postgres-data:
   mlflow-artifacts:

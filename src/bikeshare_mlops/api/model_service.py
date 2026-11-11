@@ -41,11 +41,13 @@ class ModelService:
         alias: str,
         loader: ModelLoader,
         version_lookup: VersionLookup | None = None,
+        on_loaded: Callable[[str], None] | None = None,
     ) -> None:
         self.model_name = model_name
         self.alias = alias
         self._loader = loader
         self._version_lookup = version_lookup
+        self._on_loaded = on_loaded
         self._current: LoadedModel | None = None
         self._lock = threading.Lock()
         self.last_error: str | None = None
@@ -68,6 +70,8 @@ class ModelService:
                 raise
             self._current = LoadedModel(pipeline, version, datetime.now(UTC))
             self.last_error = None
+        if self._on_loaded is not None:
+            self._on_loaded(version)
         logger.info("modèle chargé", extra={"alias": self.alias, "version": version})
         return self._current
 

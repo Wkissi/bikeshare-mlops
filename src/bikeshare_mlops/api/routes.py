@@ -26,6 +26,7 @@ from bikeshare_mlops.api.schemas import (
     PredictionResponse,
     RentalFeatures,
 )
+from bikeshare_mlops.monitoring.metrics import FEEDBACKS, INFERENCE_SECONDS, PREDICTIONS
 from bikeshare_mlops.storage import repository
 from bikeshare_mlops.storage.db import is_reachable
 from bikeshare_mlops.storage.repository import PredictionRecord
@@ -58,12 +59,19 @@ def _predict_and_store(
 ) -> tuple[list[PredictionRecord], str]:
     """Prédit puis enregistre ; un échec du modèle est lui aussi tracé (si la base répond)."""
     service = _service(request)
+    endpoint = "batch" if batch_id else "single"
     start = time.perf_counter()
     ids = [str(uuid4()) for _ in rows]
     try:
-        values, version = service.predict(rows)
+        with INFERENCE_SECONDS.time():
+            values, version = service.predict(rows)
     except Exception as error:
         current = service.current
+        PREDICTIONS.labels(
+            model_version=current.version if current else "none",
+            status="error",
+            endpoint=endpoint,
+        ).inc(len(rows))
         failures = [
             PredictionRecord(
                 id=prediction_id,
@@ -101,6 +109,7 @@ def _predict_and_store(
     ]
     with _sessions(request)() as session:
         repository.save_predictions(session, records)
+    PREDICTIONS.labels(model_version=version, status="success", endpoint=endpoint).inc(len(rows))
     return records, version
 
 
@@ -163,6 +172,7 @@ def feedback(payload: FeedbackRequest, request: Request) -> FeedbackResponse:
             message = f"Un feedback existe déjà pour la prédiction {prediction_id}."
             raise ApiError(409, "feedback_exists", message)
         saved = repository.save_feedback(session, prediction, payload.actual)
+        FEEDBACKS.inc()
         return FeedbackResponse(
             feedback_id=saved.id,
             prediction_id=payload.prediction_id,

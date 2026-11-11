@@ -116,6 +116,41 @@ curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
   -d '{"season":3,"yr":1,"mnth":7,"hr":17,"holiday":0,"weekday":3,"workingday":1,"weathersit":1,"temp":0.72,"atemp":0.66,"hum":0.45,"windspeed":0.19}'
 ```
 
+## Supervision
+
+| Outil | URL | Contenu |
+|---|---|---|
+| Grafana | http://localhost:3000 | dashboard provisionné « Bikeshare MLOps » (accès lecture sans compte ; admin/admin pour éditer) |
+| Prometheus | http://localhost:9090 | métriques brutes, règles d'alerte : http://localhost:9090/alerts |
+| Métriques de l'API | http://localhost:8000/metrics | format Prometheus, agrégé sur tous les workers uvicorn |
+
+Métriques exposées : requêtes par route et code HTTP, histogramme de latence (p50/p95/p99),
+temps d'inférence, prédictions par version et statut, feedbacks, erreurs par type, MAE glissante
+(200 derniers feedbacks), version servie, disponibilité de la base, statut et nombre de runs de
+`training_pipeline`. Règles d'alerte : `ApiDown`, `DatabaseDown`, `ModelNotLoaded`,
+`HighServerErrorRate`, `HighPredictionLatencyP95`, `TrainingPipelineFailed`, `RollingMaeDegraded`.
+
+`make traffic N=300` rejoue des heures réelles contre l'API (3 % de requêtes invalides, 80 % de
+feedbacks avec la vraie valeur observée).
+
+## Démonstrations
+
+**`make demo-nominal`** (stack démarrée par `make up`) :
+1. vérifie les services ; prépare les données si besoin ;
+2. dépose le lot suivant (les 12 mois de 2011 au premier lancement, quand il n'y a pas encore de
+   champion) ;
+3. attend que le worker Prefect exécute `training_pipeline` et affiche la décision de promotion ;
+4. attend que l'API serve le nouveau champion ;
+5. envoie 300 prédictions unitaires + 5 lots, et leurs feedbacks → visibles dans Grafana.
+
+**`make demo-incident`** (`HOLD=60` pour allonger la panne) :
+- (a) lot invalide (colonne manquante, valeurs hors plage, nulls, doublons) → pipeline en échec avant
+  entraînement, lot en quarantaine, alerte dans `logs/alerts.jsonl` ;
+- (b) arrêt de PostgreSQL → réponses 503 `database_unavailable`, `/health` dégradé, alertes
+  Prometheus `DatabaseDown` et `HighServerErrorRate`, tuile rouge dans Grafana, puis retour à la
+  normale ;
+- (c) arrêt de MLflow → `/model/reload` échoue proprement, le modèle en mémoire reste servi.
+
 ## Configuration
 
 Toute la configuration est dans `config/config.yaml`. Chaque clé se surcharge par variable

@@ -6,12 +6,14 @@ RUN := $(UV) run
 
 .DEFAULT_GOAL := help
 .PHONY: help install lint format test data next-batch invalid-batch validate train-local \
-	up down ps logs train promote rollback models pipeline predict-batch alerts migrate
+	up down ps logs train promote rollback models pipeline predict-batch alerts migrate \
+	traffic demo-nominal demo-incident
 
 COUNT ?= 1
 FILES ?= data/incoming/*.csv
 COMPOSE := docker compose
 export CODE_VERSION := $(shell git rev-parse --short HEAD)
+export MLFLOW_DISABLE_AGENT_HINT := 1
 train-local: DATA_DIR ?= data/batches
 train promote: DATA_DIR ?= data/processed
 pipeline predict-batch: export PREFECT_API_URL := http://localhost:4200/api
@@ -78,6 +80,15 @@ pipeline: ## Exécute une fois le flow training_pipeline depuis l'hôte (RETRAIN
 
 predict-batch: ## Prédit un CSV avec le champion (FILE=chemin)
 	$(RUN) python -m bikeshare_mlops.pipelines.batch_prediction $(FILE)
+
+traffic: ## Envoie du trafic réaliste à l'API (N heures, défaut 200 ; 80 % de feedbacks)
+	$(RUN) python -m bikeshare_mlops.monitoring.simulate --count $(or $(N),200)
+
+demo-nominal: ## Démo : nouveau lot → entraînement → promotion → prédictions → feedbacks (Grafana)
+	$(RUN) python scripts/demo.py nominal
+
+demo-incident: ## Démo : lot invalide bloqué + panne PostgreSQL puis MLflow (HOLD=s de panne)
+	$(RUN) python scripts/demo.py incident --hold $(or $(HOLD),30)
 
 migrate: ## Applique les migrations Alembic depuis l'hôte (le service migrate le fait au démarrage)
 	$(RUN) alembic upgrade head

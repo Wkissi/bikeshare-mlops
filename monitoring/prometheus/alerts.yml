@@ -1,0 +1,58 @@
+# Règles d'alerte évaluées par Prometheus (onglet « Alerts » : http://localhost:9090/alerts).
+groups:
+  - name: bikeshare-service
+    rules:
+      - alert: ApiDown
+        expr: up{job="bikeshare-api"} == 0
+        for: 15s
+        labels: {severity: critical}
+        annotations:
+          summary: "L'API ne répond plus à Prometheus"
+
+      - alert: DatabaseDown
+        expr: max(bikeshare_database_up) == 0
+        for: 10s
+        labels: {severity: critical}
+        annotations:
+          summary: "PostgreSQL injoignable : prédictions refusées (503)"
+
+      - alert: ModelNotLoaded
+        expr: max(bikeshare_served_model_version) == 0
+        for: 30s
+        labels: {severity: critical}
+        annotations:
+          summary: "Aucun modèle servi par l'API"
+
+      - alert: HighServerErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="bikeshare-api",status=~"5.."}[1m]))
+            / clamp_min(sum(rate(http_requests_total{job="bikeshare-api"}[1m])), 1e-9) > 0.05
+        for: 30s
+        labels: {severity: serious}
+        annotations:
+          summary: "Plus de 5 % de réponses 5xx sur la dernière minute"
+
+      - alert: HighPredictionLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{handler="/predict"}[1m]))) > 0.5
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "Latence p95 de /predict au-dessus de 500 ms"
+
+  - name: bikeshare-model
+    rules:
+      - alert: TrainingPipelineFailed
+        expr: bikeshare_last_pipeline_run_success == 0
+        labels: {severity: serious}
+        annotations:
+          summary: "Le dernier run de training_pipeline a échoué (voir logs/alerts.jsonl)"
+
+      - alert: RollingMaeDegraded
+        # MAE de test du modèle ~25 vélos/h : au-delà de 60 sur les feedbacks, la qualité dérive.
+        expr: bikeshare_rolling_mae > 60 and bikeshare_rolling_mae_samples >= 50
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "MAE glissante des feedbacks au-dessus de 60 locations/h"
