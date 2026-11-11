@@ -2,8 +2,23 @@
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+INVALID_BATCH_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "make_invalid_batch.py"
+
+
+def corrupt_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Applique les anomalies de ``scripts/make_invalid_batch.py`` (le script de la démo)."""
+    spec = importlib.util.spec_from_file_location("make_invalid_batch", INVALID_BATCH_SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.corrupt(frame)
+
 
 HOURLY_PROFILE = np.array(
     [0.2, 0.1, 0.08, 0.05, 0.05, 0.15, 0.5, 1.2, 2.0, 1.1, 0.8, 0.9,

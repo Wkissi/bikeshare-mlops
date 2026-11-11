@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import warnings
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from importlib import metadata
@@ -152,6 +154,8 @@ def log_and_register(
                 "data_sha256": result.data_sha256,
                 "n_batches": str(len(batches)),
                 "last_batch": batches[-1].name if batches else "",
+                # Commit Git du code (exporté par le Makefile, figé dans l'image Docker).
+                "code_version": os.environ.get("CODE_VERSION", "unknown"),
             }
         )
         mlflow.log_params(
@@ -177,18 +181,21 @@ def log_and_register(
         mlflow.log_dict({"batches": [b.as_params() for b in batches]}, "data/batches.json")
         for path in result.artifacts:
             mlflow.log_artifact(str(path), artifact_path="evaluation")
-        signature = infer_signature(
-            result.input_example, result.pipeline.predict(result.input_example)
-        )
-        info = mlflow.sklearn.log_model(
-            result.pipeline,
-            name="model",
-            signature=signature,
-            input_example=result.input_example,
-            registered_model_name=settings.mlflow.registered_model_name,
-            skops_trusted_types=SKOPS_TRUSTED_TYPES,
-            pip_requirements=_serving_requirements(),
-        )
+        with warnings.catch_warnings():
+            # Colonnes entières voulues : l'API valide les types en amont (pas de valeur manquante).
+            warnings.filterwarnings("ignore", message=".*Inferred schema contains integer")
+            signature = infer_signature(
+                result.input_example, result.pipeline.predict(result.input_example)
+            )
+            info = mlflow.sklearn.log_model(
+                result.pipeline,
+                name="model",
+                signature=signature,
+                input_example=result.input_example,
+                registered_model_name=settings.mlflow.registered_model_name,
+                skops_trusted_types=SKOPS_TRUSTED_TYPES,
+                pip_requirements=_serving_requirements(),
+            )
 
     version = str(info.registered_model_version)
     registry.tag_version(

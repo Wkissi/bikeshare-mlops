@@ -22,6 +22,7 @@ from pandera.errors import SchemaErrors
 
 from bikeshare_mlops.config import Settings, get_settings
 from bikeshare_mlops.exceptions import DataValidationError
+from bikeshare_mlops.features.build import FEATURES
 from bikeshare_mlops.utils.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
@@ -82,6 +83,13 @@ def build_schema(min_rows: int) -> pa.DataFrameSchema:
     )
 
 
+def build_feature_schema() -> pa.DataFrameSchema:
+    """Schéma des données à prédire : mêmes règles, limitées aux variables explicatives."""
+    full = build_schema(min_rows=1)
+    columns = {name: column for name, column in full.columns.items() if name in FEATURES}
+    return pa.DataFrameSchema(columns, strict=False, name="prediction_input")
+
+
 @dataclass(frozen=True)
 class ValidationResult:
     """Résultat d'une validation réussie : données typées + rapport sauvegardé."""
@@ -120,9 +128,17 @@ def _write_report(report: dict[str, Any], reports_dir: Path) -> Path:
     return path
 
 
-def validate_frame(frame: pd.DataFrame, batch_name: str, settings: Settings) -> ValidationResult:
-    """Valide un lot ; lève ``DataValidationError`` (rapport à l'appui) s'il n'est pas conforme."""
-    schema = build_schema(settings.quality.min_rows)
+def validate_frame(
+    frame: pd.DataFrame,
+    batch_name: str,
+    settings: Settings,
+    schema: pa.DataFrameSchema | None = None,
+) -> ValidationResult:
+    """Valide un lot ; lève ``DataValidationError`` (rapport à l'appui) s'il n'est pas conforme.
+
+    Par défaut, schéma complet des lots d'entraînement ; ``schema`` permet d'en imposer un autre.
+    """
+    schema = schema or build_schema(settings.quality.min_rows)
     report: dict[str, Any] = {
         "batch": batch_name,
         "validated_at": datetime.now(UTC).isoformat(timespec="seconds"),

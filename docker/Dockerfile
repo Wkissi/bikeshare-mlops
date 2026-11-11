@@ -1,7 +1,12 @@
 # Image applicative unique (MLflow, Prefect, pipeline, API) : mêmes versions figées partout (uv.lock).
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
+# Commit Git du code embarqué (fourni par `make up`), tracé dans chaque run MLflow.
+ARG CODE_VERSION=unknown
+
+ENV CODE_VERSION=${CODE_VERSION} \
+    GIT_PYTHON_REFRESH=quiet \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \

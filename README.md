@@ -62,6 +62,34 @@ non-régression (prédictions valides, RMSE au moins 30 % sous la baseline, mêm
 aucune saison dégradée de plus de 10 %, latence unitaire sous 200 ms) **et** battre le RMSE du
 champion d'au moins 2 %.
 
+## Orchestration (Prefect)
+
+Le conteneur `pipeline-worker` sert trois déploiements (visibles sur http://localhost:4200) :
+
+| Déploiement | Déclenchement | Rôle |
+|---|---|---|
+| `watch_incoming/watch-incoming` | toutes les 60 s | lance `training_pipeline` dès qu'un lot arrive dans `data/incoming/` |
+| `training_pipeline/weekly-retrain` | cron `0 6 * * 1` | réentraîne sur toutes les données validées |
+| `batch_prediction/on-demand` | manuel (UI ou CLI) | prédit un CSV avec le champion |
+
+Flow `training_pipeline` : `ingest` → `validate` → `build_dataset` → `train` → `register` → `promote`.
+
+- Chaque lot reçu donne un run MLflow dans l'expérience `bikeshare-ingestion` (hash, volume, période,
+  rapport qualité).
+- Un lot non conforme part dans `data/rejected/`, le flow échoue **avant** tout entraînement et une
+  alerte est émise ; les lots valides du même passage restent en attente.
+- Les tâches qui parlent à MLflow sont relancées 3 fois (10 s d'intervalle) en cas d'erreur.
+- Alertes : `logs/alerts.jsonl` (toujours) + log Prefect + webhook Slack/Discord si
+  `BIKESHARE_ALERTS__WEBHOOK_URL` est défini.
+
+| Commande | Effet |
+|---|---|
+| `make next-batch` | dépose le lot suivant : le worker le traite dans la minute |
+| `make invalid-batch` | dépose un lot corrompu : pipeline bloqué + alerte |
+| `make pipeline` | exécute une fois le flow depuis l'hôte (`RETRAIN=1` sans nouveau lot) |
+| `make predict-batch FILE=...` | prédiction par lot (`data/predictions/`) |
+| `make alerts` | dernières alertes |
+
 ## Configuration
 
 Toute la configuration est dans `config/config.yaml`. Chaque clé se surcharge par variable

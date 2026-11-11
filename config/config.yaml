@@ -40,6 +40,7 @@ training:
 mlflow:
   tracking_uri: http://localhost:5000     # dans Docker : http://mlflow:5000 (variable d'env)
   experiment_name: bikeshare-demand
+  ingestion_experiment_name: bikeshare-ingestion   # un run par lot reçu (métadonnées + rapport qualité)
   registered_model_name: bikeshare-rf
   artifact_location: null                  # null = stockage géré par le serveur MLflow
 
@@ -49,6 +50,17 @@ promotion:
   min_gain_vs_baseline_pct: 30.0     # non-régression : RMSE au moins 30 % sous la baseline
   max_segment_degradation_pct: 10.0  # non-régression : aucune saison dégradée de plus de 10 %
   max_single_prediction_ms: 200.0    # non-régression : latence médiane d'une prédiction unitaire
+
+orchestration:
+  training_cron: "0 6 * * 1"     # réentraînement hebdomadaire (lundi 6 h) sur toutes les données
+  watch_interval_s: 60           # fréquence de surveillance de data/incoming
+  task_retries: 3                # tâches réseau (MLflow) : nouvelles tentatives
+  retry_delay_s: 10
+
+alerts:
+  webhook_url: null              # URL Slack/Discord/… ; via BIKESHARE_ALERTS__WEBHOOK_URL (secret)
+  file_name: alerts.jsonl        # toujours écrit dans paths.logs_dir
+  timeout_s: 5
 
 logging:
   level: INFO

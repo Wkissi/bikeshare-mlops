@@ -21,7 +21,6 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-import mlflow
 import numpy as np
 import pandas as pd
 from mlflow.exceptions import MlflowException
@@ -196,11 +195,6 @@ def decide(
     )
 
 
-def _load(settings: Settings, version: str) -> Pipeline:
-    uri = f"models:/{settings.mlflow.registered_model_name}/{version}"
-    return mlflow.sklearn.load_model(uri)
-
-
 def evaluate_and_promote(
     settings: Settings, frame: pd.DataFrame, version: str | None = None
 ) -> PromotionDecision:
@@ -214,11 +208,10 @@ def evaluate_and_promote(
     champion_version = registry.version_by_alias(settings, registry.CHAMPION)
     if champion_version == version:
         raise RegistryError(f"La version {version} est déjà le champion.")
-    champion = None if champion_version is None else _load(settings, champion_version)
+    champion = None if champion_version is None else registry.load_model(settings, champion_version)
+    challenger = registry.load_model(settings, version)
 
-    decision = decide(
-        version, _load(settings, version), champion, champion_version, frame, settings
-    )
+    decision = decide(version, challenger, champion, champion_version, frame, settings)
     registry.tag_version(settings, version, decision.as_tags())
     if decision.promoted:
         registry.set_alias(settings, registry.CHAMPION, version)

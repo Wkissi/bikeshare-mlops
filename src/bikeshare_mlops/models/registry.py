@@ -13,8 +13,10 @@ from dataclasses import dataclass
 import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
+from sklearn.pipeline import Pipeline
 
 from bikeshare_mlops.config import Settings, get_settings
+from bikeshare_mlops.exceptions import RegistryError
 
 CHAMPION = "champion"
 CHALLENGER = "challenger"
@@ -23,15 +25,20 @@ TAG_STATUS = "promotion_status"
 TAG_REASON = "promotion_reason"
 
 
-def configure_tracking(settings: Settings) -> str:
-    """Pointe MLflow vers le serveur configuré et garantit l'existence de l'expérience."""
+def configure_tracking(settings: Settings, experiment_name: str | None = None) -> str:
+    """Pointe MLflow vers le serveur configuré et active l'expérience (créée si besoin).
+
+    Par défaut, l'expérience d'entraînement ; ``experiment_name`` permet d'en choisir une autre.
+    """
     mlflow.set_tracking_uri(settings.mlflow.tracking_uri)
     mlflow.set_registry_uri(settings.mlflow.tracking_uri)
-    experiment = mlflow.get_experiment_by_name(settings.mlflow.experiment_name)
+    name = experiment_name or settings.mlflow.experiment_name
+    experiment = mlflow.get_experiment_by_name(name)
     if experiment is None:
-        experiment_id = mlflow.create_experiment(
-            settings.mlflow.experiment_name, artifact_location=settings.mlflow.artifact_location
-        )
+        location = settings.mlflow.artifact_location
+        if location is not None:
+            location = f"{location.rstrip('/')}/{name}"
+        experiment_id = mlflow.create_experiment(name, artifact_location=location)
     else:
         experiment_id = experiment.experiment_id
     mlflow.set_experiment(experiment_id=experiment_id)
@@ -59,6 +66,22 @@ def version_by_alias(settings: Settings, alias: str) -> str | None:
     except MlflowException:
         return None
     return str(entry.version)
+
+
+def load_model(settings: Settings, version: str) -> Pipeline:
+    """Charge une version précise du modèle enregistré (pipeline sklearn complet)."""
+    uri = f"models:/{settings.mlflow.registered_model_name}/{version}"
+    return mlflow.sklearn.load_model(uri)
+
+
+def load_by_alias(settings: Settings, alias: str) -> tuple[Pipeline, str]:
+    """Charge la version portant ``alias`` ; renvoie (modèle, numéro de version)."""
+    version = version_by_alias(settings, alias)
+    if version is None:
+        raise RegistryError(
+            f"Aucune version avec l'alias '{alias}' pour {settings.mlflow.registered_model_name}."
+        )
+    return load_model(settings, version), version
 
 
 def set_alias(settings: Settings, alias: str, version: str) -> None:

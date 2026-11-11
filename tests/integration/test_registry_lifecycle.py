@@ -55,6 +55,7 @@ def test_full_lifecycle(mlflow_settings: Settings, tmp_path: Path) -> None:
     assert run.data.tags["data_sha256"] == result.data_sha256
     assert run.data.metrics["test_rmse"] == pytest.approx(result.metrics.rmse)
     assert "model.n_estimators" in run.data.params
+    assert run.data.tags["code_version"]
 
     decision = evaluate_and_promote(mlflow_settings, frame)
     assert decision.promoted

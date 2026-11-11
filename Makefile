@@ -6,13 +6,15 @@ RUN := $(UV) run
 
 .DEFAULT_GOAL := help
 .PHONY: help install lint format test data next-batch invalid-batch validate train-local \
-	up down ps logs train promote rollback models
+	up down ps logs train promote rollback models pipeline predict-batch alerts
 
 COUNT ?= 1
 FILES ?= data/incoming/*.csv
 COMPOSE := docker compose
+export CODE_VERSION := $(shell git rev-parse --short HEAD)
 train-local: DATA_DIR ?= data/batches
 train promote: DATA_DIR ?= data/processed
+pipeline predict-batch: export PREFECT_API_URL := http://localhost:4200/api
 
 help: ## Liste les commandes disponibles
 	@$(RUN) python scripts/make_help.py Makefile
@@ -70,3 +72,12 @@ rollback: ## Remet l'alias champion sur une version précédente (VERSION=n)
 
 models: ## État du registre : versions, alias, statut de promotion
 	$(RUN) python -m bikeshare_mlops.models.registry
+
+pipeline: ## Exécute une fois le flow training_pipeline depuis l'hôte (RETRAIN=1 : sans nouveau lot)
+	$(RUN) python -m bikeshare_mlops.pipelines.training $(if $(RETRAIN),--retrain,)
+
+predict-batch: ## Prédit un CSV avec le champion (FILE=chemin)
+	$(RUN) python -m bikeshare_mlops.pipelines.batch_prediction $(FILE)
+
+alerts: ## Affiche les dernières alertes
+	$(RUN) python -m bikeshare_mlops.utils.alerts

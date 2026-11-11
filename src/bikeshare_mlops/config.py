@@ -73,8 +73,22 @@ class TrainingConfig(_Section):
 class MlflowConfig(_Section):
     tracking_uri: str = "http://localhost:5000"
     experiment_name: str = "bikeshare-demand"
+    ingestion_experiment_name: str = "bikeshare-ingestion"
     registered_model_name: str = "bikeshare-rf"
     artifact_location: str | None = None
+
+
+class OrchestrationConfig(_Section):
+    training_cron: str = "0 6 * * 1"
+    watch_interval_s: int = Field(default=60, ge=10)
+    task_retries: int = Field(default=3, ge=0)
+    retry_delay_s: int = Field(default=10, ge=0)
+
+
+class AlertsConfig(_Section):
+    webhook_url: str | None = None
+    file_name: str = "alerts.jsonl"
+    timeout_s: float = Field(default=5, gt=0)
 
 
 class PromotionConfig(_Section):
@@ -115,6 +129,8 @@ class Settings(BaseSettings):
     training: TrainingConfig = TrainingConfig()
     mlflow: MlflowConfig = MlflowConfig()
     promotion: PromotionConfig = PromotionConfig()
+    orchestration: OrchestrationConfig = OrchestrationConfig()
+    alerts: AlertsConfig = AlertsConfig()
     logging: LoggingConfig = LoggingConfig()
 
     @classmethod

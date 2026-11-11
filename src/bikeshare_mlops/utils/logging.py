@@ -8,6 +8,9 @@ import sys
 from datetime import UTC, datetime
 from typing import Any
 
+# Bibliothèques qui journalisent chaque requête HTTP en INFO (bruit dans les logs du worker).
+_NOISY_LIBRARIES = ("httpx", "httpcore", "urllib3")
+
 _STANDARD_ATTRS = frozenset(
     logging.LogRecord("", 0, "", 0, "", None, None).__dict__.keys() | {"message", "asctime"}
 )
@@ -41,6 +44,8 @@ def configure_logging(level: str = "INFO", json_output: bool = True) -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(level)
+    for noisy in _NOISY_LIBRARIES:
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger:
