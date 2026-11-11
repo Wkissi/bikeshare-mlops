@@ -1,0 +1,18 @@
+﻿# Configuration unique du projet.
+# Toute clé peut être surchargée par une variable d'environnement :
+#   BIKESHARE_<SECTION>__<CLE>, ex. BIKESHARE_LOGGING__LEVEL=DEBUG
+# Le fichier lu peut être remplacé via BIKESHARE_CONFIG_FILE.
+
+project_name: bikeshare-mlops
+
+paths:
+  data_dir: data
+  raw_dir: data/raw
+  batches_dir: data/batches
+  incoming_dir: data/incoming
+  reports_dir: reports
+  logs_dir: logs
+
+logging:
+  level: INFO
+  json_format: true
