@@ -83,7 +83,7 @@ def test_cli_trains_from_batch_directory(
     monkeypatch.setenv("BIKESHARE_TRAINING__MODEL__N_ESTIMATORS", "5")
     monkeypatch.setenv("BIKESHARE_TRAINING__MODEL__N_JOBS", "1")
 
-    train.main(["--data-dir", str(batches), "--output-dir", str(tmp_path / "out")])
+    train.main(["--no-mlflow", "--data-dir", str(batches), "--output-dir", str(tmp_path / "out")])
 
     assert "test_rmse" in json.loads(capsys.readouterr().out)
     assert (tmp_path / "out" / "residuals.png").exists()

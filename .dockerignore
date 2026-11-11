@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.env
+.pytest_cache
+.ruff_cache
+.coverage
+**/__pycache__
+data
+reports
+logs
+mlruns
+mlartifacts
+docs
+tests
+load_tests

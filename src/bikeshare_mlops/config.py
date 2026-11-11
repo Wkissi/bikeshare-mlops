@@ -70,6 +70,22 @@ class TrainingConfig(_Section):
     model: ModelParams = ModelParams()
 
 
+class MlflowConfig(_Section):
+    tracking_uri: str = "http://localhost:5000"
+    experiment_name: str = "bikeshare-demand"
+    registered_model_name: str = "bikeshare-rf"
+    artifact_location: str | None = None
+
+
+class PromotionConfig(_Section):
+    """Règles de mise en service d'un challenger."""
+
+    min_improvement_pct: float = Field(default=2.0, ge=0)
+    min_gain_vs_baseline_pct: float = Field(default=30.0, ge=0)
+    max_segment_degradation_pct: float = Field(default=10.0, ge=0)
+    max_single_prediction_ms: float = Field(default=200.0, gt=0)
+
+
 class LoggingConfig(_Section):
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     json_format: bool = True
@@ -97,6 +113,8 @@ class Settings(BaseSettings):
     data: DataConfig
     quality: QualityConfig = QualityConfig()
     training: TrainingConfig = TrainingConfig()
+    mlflow: MlflowConfig = MlflowConfig()
+    promotion: PromotionConfig = PromotionConfig()
     logging: LoggingConfig = LoggingConfig()
 
     @classmethod

@@ -20,6 +20,19 @@ def _reset_settings_cache() -> Iterator[None]:
     get_settings.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _isolate_mlflow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Garde-fou : aucun test ne peut écrire dans le vrai serveur MLflow.
+
+    Par défaut, MLflow pointe vers une base SQLite jetable propre à chaque test.
+    """
+    monkeypatch.setenv(
+        "BIKESHARE_MLFLOW__TRACKING_URI", f"sqlite:///{(tmp_path / 'mlflow.db').as_posix()}"
+    )
+    monkeypatch.setenv("BIKESHARE_MLFLOW__ARTIFACT_LOCATION", (tmp_path / "artifacts").as_uri())
+    monkeypatch.setenv("MLFLOW_DISABLE_AGENT_HINT", "1")
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     """Configuration du dépôt dont tous les chemins pointent vers un dossier temporaire."""

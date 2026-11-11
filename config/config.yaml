@@ -29,13 +29,26 @@ training:
   test_fraction: 0.2             # part des relevés réservée au jeu de test
   split_salt: bikeshare          # sel du découpage par hash (changer = autre partition)
   min_train_rows: 1000           # en dessous, l'entraînement est refusé
-  model:                         # RandomForestRegressor
-    n_estimators: 200
-    max_depth: 20
-    min_samples_leaf: 2
+  model:                         # RandomForestRegressor (compromis précision / taille / latence)
+    n_estimators: 60             # 200 arbres : RMSE -2 % mais modèle x6 et latence x2,4
+    max_depth: 15
+    min_samples_leaf: 3
     max_features: 0.8
     n_jobs: -1
     random_state: 42
+
+mlflow:
+  tracking_uri: http://localhost:5000     # dans Docker : http://mlflow:5000 (variable d'env)
+  experiment_name: bikeshare-demand
+  registered_model_name: bikeshare-rf
+  artifact_location: null                  # null = stockage géré par le serveur MLflow
+
+promotion:
+  # Le challenger devient champion seulement si TOUTES les conditions sont remplies.
+  min_improvement_pct: 2.0           # RMSE au moins 2 % meilleur que le champion (même jeu de test)
+  min_gain_vs_baseline_pct: 30.0     # non-régression : RMSE au moins 30 % sous la baseline
+  max_segment_degradation_pct: 10.0  # non-régression : aucune saison dégradée de plus de 10 %
+  max_single_prediction_ms: 200.0    # non-régression : latence médiane d'une prédiction unitaire
 
 logging:
   level: INFO

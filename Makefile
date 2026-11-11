@@ -5,11 +5,14 @@ UV ?= uv
 RUN := $(UV) run
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test data next-batch invalid-batch validate train-local
+.PHONY: help install lint format test data next-batch invalid-batch validate train-local \
+	up down ps logs train promote rollback models
 
 COUNT ?= 1
 FILES ?= data/incoming/*.csv
-DATA_DIR ?= data/batches
+COMPOSE := docker compose
+train-local: DATA_DIR ?= data/batches
+train promote: DATA_DIR ?= data/processed
 
 help: ## Liste les commandes disponibles
 	@$(RUN) python scripts/make_help.py Makefile
@@ -42,4 +45,28 @@ validate: ## Contrôle qualité de fichiers de lots (FILES="chemin1 chemin2")
 	$(RUN) python -m bikeshare_mlops.data.validate $(wildcard $(FILES))
 
 train-local: ## Entraîne et évalue hors MLflow sur DATA_DIR (défaut : tous les lots)
+	$(RUN) python -m bikeshare_mlops.models.train --no-mlflow --data-dir $(DATA_DIR)
+
+up: ## Construit et démarre les services Docker (attend qu'ils soient sains)
+	$(COMPOSE) up -d --build --wait
+
+down: ## Arrête les services (les volumes sont conservés)
+	$(COMPOSE) down
+
+ps: ## État des services Docker
+	$(COMPOSE) ps
+
+logs: ## Journaux des services (SERVICE=nom pour un seul)
+	$(COMPOSE) logs --tail 100 $(SERVICE)
+
+train: ## Entraîne sur DATA_DIR, trace dans MLflow et enregistre le challenger
 	$(RUN) python -m bikeshare_mlops.models.train --data-dir $(DATA_DIR)
+
+promote: ## Compare le challenger au champion et applique les règles de promotion
+	$(RUN) python -m bikeshare_mlops.models.promote decide --data-dir $(DATA_DIR)
+
+rollback: ## Remet l'alias champion sur une version précédente (VERSION=n)
+	$(RUN) python -m bikeshare_mlops.models.promote rollback --version $(VERSION)
+
+models: ## État du registre : versions, alias, statut de promotion
+	$(RUN) python -m bikeshare_mlops.models.registry

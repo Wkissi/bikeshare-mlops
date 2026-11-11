@@ -19,6 +19,10 @@ class ChecksumMismatchError(BikeshareError):
         self.actual = actual
 
 
+class RegistryError(BikeshareError):
+    """Opération impossible sur le registre de modèles (version absente, alias incohérent)."""
+
+
 class InsufficientDataError(BikeshareError):
     """Trop peu de données pour entraîner un modèle fiable."""
 

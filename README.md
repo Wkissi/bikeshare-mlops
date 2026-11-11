@@ -39,6 +39,29 @@ make help      # liste de toutes les commandes
 | `make validate FILES="..."` | contrôle qualité pandera (rapport JSON dans `reports/validation/`) |
 | `make invalid-batch` | dépose un lot volontairement corrompu (démo d'incident) |
 
+## Services Docker et cycle de vie des modèles
+
+`make up` démarre PostgreSQL, MLflow et le serveur Prefect (images construites depuis `uv.lock`).
+
+| Service | URL |
+|---|---|
+| MLflow (tracking + registre) | http://localhost:5000 |
+| Prefect (orchestration) | http://localhost:4200 |
+| PostgreSQL | `localhost:5432` (bases `bikeshare`, `mlflow`, `prefect`) |
+
+| Commande | Effet |
+|---|---|
+| `make train DATA_DIR=data/processed` | entraîne, trace le run dans MLflow, enregistre la version en `challenger` |
+| `make promote` | compare le challenger au champion sur le même jeu de test, promeut ou rejette (tag motivé) |
+| `make models` | état du registre : versions, alias, statut |
+| `make rollback VERSION=n` | remet l'alias `champion` sur la version `n` |
+| `make train-local` | évaluation locale sans MLflow (`reports/training/`) |
+
+Règles de promotion (`config/config.yaml` > `promotion`) : le challenger doit passer tous les tests de
+non-régression (prédictions valides, RMSE au moins 30 % sous la baseline, mêmes colonnes d'entrée,
+aucune saison dégradée de plus de 10 %, latence unitaire sous 200 ms) **et** battre le RMSE du
+champion d'au moins 2 %.
+
 ## Configuration
 
 Toute la configuration est dans `config/config.yaml`. Chaque clé se surcharge par variable
