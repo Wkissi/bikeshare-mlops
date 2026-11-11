@@ -104,6 +104,12 @@ services:
       MLFLOW_HTTP_REQUEST_TIMEOUT: "5"
     ports:
       - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          # Dimensionnement recommandé par les tests de charge (docs/load_tests/RESULTATS.md).
+          cpus: "${API_CPUS:-2}"
+          memory: ${API_MEMORY:-1g}
     depends_on:
       migrate:
         condition: service_completed_successfully

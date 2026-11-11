@@ -7,7 +7,7 @@ RUN := $(UV) run
 .DEFAULT_GOAL := help
 .PHONY: help install lint format test data next-batch invalid-batch validate train-local \
 	up down ps logs train promote rollback models pipeline predict-batch alerts migrate \
-	traffic demo-nominal demo-incident
+	traffic demo-nominal demo-incident load-test load-test-fine
 
 COUNT ?= 1
 FILES ?= data/incoming/*.csv
@@ -26,12 +26,12 @@ install: ## Installe Python 3.11 et les dépendances figées (uv.lock)
 	$(UV) sync --frozen --all-groups
 
 lint: ## Vérifie le style et les erreurs courantes (ruff)
-	$(RUN) ruff check src tests scripts migrations
-	$(RUN) ruff format --check src tests scripts migrations
+	$(RUN) ruff check src tests scripts migrations load_tests
+	$(RUN) ruff format --check src tests scripts migrations load_tests
 
 format: ## Reformate le code et corrige ce qui peut l'être automatiquement
-	$(RUN) ruff check --fix src tests scripts migrations
-	$(RUN) ruff format src tests scripts migrations
+	$(RUN) ruff check --fix src tests scripts migrations load_tests
+	$(RUN) ruff format src tests scripts migrations load_tests
 
 test: ## Lance tous les tests avec la couverture
 	$(RUN) pytest
@@ -89,6 +89,12 @@ demo-nominal: ## Démo : nouveau lot → entraînement → promotion → prédic
 
 demo-incident: ## Démo : lot invalide bloqué + panne PostgreSQL puis MLflow (HOLD=s de panne)
 	$(RUN) python scripts/demo.py incident --hold $(or $(HOLD),30)
+
+load-test: ## Matrice Locust (vCPU × mémoire × workers × utilisateurs, ~35 min) → docs/load_tests/
+	$(RUN) python -m load_tests.run_matrix
+
+load-test-fine: ## Paliers fins (10-40 utilisateurs) sur les configurations candidates (~9 min)
+	$(RUN) python -m load_tests.run_matrix --profiles medium large --workers 2 --users 10 20 30 40 --append
 
 migrate: ## Applique les migrations Alembic depuis l'hôte (le service migrate le fait au démarrage)
 	$(RUN) alembic upgrade head
