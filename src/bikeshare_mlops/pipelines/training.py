@@ -23,6 +23,7 @@ import mlflow
 import pandas as pd
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NO_CACHE
+from prefect.runtime import flow_run
 
 from bikeshare_mlops.config import Settings, get_settings
 from bikeshare_mlops.data.dataset import load_batches
@@ -37,7 +38,7 @@ from bikeshare_mlops.models.train import (
     log_and_register,
     train_and_evaluate,
 )
-from bikeshare_mlops.pipelines.hooks import alert_on_failure
+from bikeshare_mlops.pipelines.hooks import alert_on_failure, record_run
 from bikeshare_mlops.utils.hashing import file_sha256
 
 
@@ -173,6 +174,14 @@ def training_pipeline(retrain_without_new_data: bool = False) -> dict[str, Any]:
         "test_rmse": round(result.metrics.rmse, 3),
     }
     logger.info("Résultat : %s", json.dumps(summary, ensure_ascii=False))
+    record_run(
+        "training_pipeline",
+        str(flow_run.id),
+        "COMPLETED",
+        outcome=summary["status"],
+        model_version=registered.version,
+        message=decision.reason,
+    )
     return summary
 
 

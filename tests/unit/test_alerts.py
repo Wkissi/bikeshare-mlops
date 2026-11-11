@@ -42,7 +42,6 @@ def test_alert_is_posted_to_webhook(settings: Settings) -> None:
 def test_cli_shows_last_alerts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setenv("BIKESHARE_PATHS__LOGS_DIR", str(tmp_path / "logs"))
     main([])
     assert "Aucune alerte." in capsys.readouterr().out
 

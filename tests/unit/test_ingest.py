@@ -145,5 +145,5 @@ def test_cli_prepare_then_release(
     ingest.main(["release", "--count", "2"])
 
     assert server.calls == 1
-    assert len(list_batches(tmp_path / "data" / "batches")) == 3
-    assert len(list_batches(tmp_path / "data" / "incoming")) == 2
+    assert len(list_batches(tmp_path / "batches_dir")) == 3
+    assert len(list_batches(tmp_path / "incoming_dir")) == 2

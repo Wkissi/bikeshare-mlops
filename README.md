@@ -90,6 +90,32 @@ Flow `training_pipeline` : `ingest` → `validate` → `build_dataset` → `trai
 | `make predict-batch FILE=...` | prédiction par lot (`data/predictions/`) |
 | `make alerts` | dernières alertes |
 
+## API de prévision
+
+http://localhost:8000 (documentation interactive : http://localhost:8000/docs).
+
+| Route | Rôle |
+|---|---|
+| `POST /predict` | une heure → `prediction`, `model_name`, `model_version`, `prediction_id`, `latency_ms` |
+| `POST /predict/batch` | jusqu'à 1 000 heures en un appel (`batch_id` + un `prediction_id` par ligne) |
+| `POST /feedback` | `prediction_id` + valeur observée `actual` → erreur absolue enregistrée |
+| `GET /health` | 200 `ok` / 503 `degraded` : état de la base, du modèle, dernier run de pipeline |
+| `GET /model` | version servie ; `POST /model/reload` force le rechargement |
+
+- Validation stricte : types exacts, plages du dataset, champ inconnu refusé → 422 avec la liste des
+  champs en cause. Base indisponible → 503 `database_unavailable` ; modèle absent → 503
+  `model_unavailable` ; erreur imprévue → 500 sans détail interne (détail dans les logs).
+- Chaque prédiction (réussie ou non) est enregistrée dans PostgreSQL : entrées, sortie, version,
+  latence, statut, erreur. Tables `predictions`, `feedbacks`, `pipeline_runs`, créées par la
+  migration Alembic (`migrations/`, service `migrate`).
+- Chaque worker uvicorn suit l'alias `champion` (toutes les 30 s) : une promotion ou un
+  `make rollback` est appliqué sans redémarrage ; un registre injoignable ne coupe pas le service.
+
+```bash
+curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
+  -d '{"season":3,"yr":1,"mnth":7,"hr":17,"holiday":0,"weekday":3,"workingday":1,"weathersit":1,"temp":0.72,"atemp":0.66,"hum":0.45,"windspeed":0.19}'
+```
+
 ## Configuration
 
 Toute la configuration est dans `config/config.yaml`. Chaque clé se surcharge par variable

@@ -62,6 +62,18 @@ alerts:
   file_name: alerts.jsonl        # toujours écrit dans paths.logs_dir
   timeout_s: 5
 
+database:
+  # Identifiants de développement local uniquement : en dehors du poste de dev, passer l'URL
+  # complète par BIKESHARE_DATABASE__URL (jamais dans ce fichier). Dans Docker : hôte « postgres ».
+  url: postgresql+psycopg://bikeshare:bikeshare@localhost:5432/bikeshare
+  pool_size: 5
+  connect_timeout_s: 3           # échec rapide si PostgreSQL est indisponible
+
+api:
+  model_alias: champion          # version servie (alias du registre MLflow)
+  model_refresh_s: 30            # chaque worker suit l'alias : promotion/rollback appliqués en <= 30 s
+  rolling_mae_window: 200        # nb de derniers feedbacks pour la MAE glissante
+
 logging:
   level: INFO
   json_format: true

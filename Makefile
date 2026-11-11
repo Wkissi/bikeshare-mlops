@@ -6,7 +6,7 @@ RUN := $(UV) run
 
 .DEFAULT_GOAL := help
 .PHONY: help install lint format test data next-batch invalid-batch validate train-local \
-	up down ps logs train promote rollback models pipeline predict-batch alerts
+	up down ps logs train promote rollback models pipeline predict-batch alerts migrate
 
 COUNT ?= 1
 FILES ?= data/incoming/*.csv
@@ -78,6 +78,9 @@ pipeline: ## Exécute une fois le flow training_pipeline depuis l'hôte (RETRAIN
 
 predict-batch: ## Prédit un CSV avec le champion (FILE=chemin)
 	$(RUN) python -m bikeshare_mlops.pipelines.batch_prediction $(FILE)
+
+migrate: ## Applique les migrations Alembic depuis l'hôte (le service migrate le fait au démarrage)
+	$(RUN) alembic upgrade head
 
 alerts: ## Affiche les dernières alertes
 	$(RUN) python -m bikeshare_mlops.utils.alerts

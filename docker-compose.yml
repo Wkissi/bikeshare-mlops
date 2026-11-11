@@ -8,6 +8,9 @@ x-app-image: &app-image
     args:
       CODE_VERSION: ${CODE_VERSION:-unknown}
 
+x-app-database: &app-database
+  BIKESHARE_DATABASE__URL: postgresql+psycopg://${POSTGRES_USER:-bikeshare}:${POSTGRES_PASSWORD:-bikeshare}@postgres:5432/${POSTGRES_DB:-bikeshare}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -74,10 +77,47 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  migrate:
+    <<: *app-image
+    command: alembic upgrade head
+    environment:
+      <<: *app-database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app-image
+    command: >
+      uvicorn bikeshare_mlops.api.main:create_app --factory
+      --host 0.0.0.0 --port 8000 --workers ${API_WORKERS:-2} --no-access-log
+    environment:
+      <<: *app-database
+      BIKESHARE_MLFLOW__TRACKING_URI: http://mlflow:5000
+      # Registre injoignable : /model/reload échoue en quelques secondes (défaut MLflow : 7 essais).
+      MLFLOW_HTTP_REQUEST_MAX_RETRIES: "1"
+      MLFLOW_HTTP_REQUEST_TIMEOUT: "5"
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
   pipeline-worker:
     <<: *app-image
     command: python -m bikeshare_mlops.pipelines.serve
     environment:
+      <<: *app-database
       PREFECT_API_URL: http://prefect-server:4200/api
       BIKESHARE_MLFLOW__TRACKING_URI: http://mlflow:5000
       BIKESHARE_ALERTS__WEBHOOK_URL: ${BIKESHARE_ALERTS__WEBHOOK_URL:-}
@@ -91,6 +131,8 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:

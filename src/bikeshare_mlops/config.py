@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -100,6 +100,20 @@ class PromotionConfig(_Section):
     max_single_prediction_ms: float = Field(default=200.0, gt=0)
 
 
+class DatabaseConfig(_Section):
+    """Base des prédictions, feedbacks et runs de pipeline (identifiants via variable d'env)."""
+
+    url: SecretStr = SecretStr("postgresql+psycopg://bikeshare:bikeshare@localhost:5432/bikeshare")
+    pool_size: int = Field(default=5, ge=1)
+    connect_timeout_s: int = Field(default=3, ge=1)
+
+
+class ApiConfig(_Section):
+    model_alias: str = "champion"
+    model_refresh_s: float = Field(default=30, gt=0)
+    rolling_mae_window: int = Field(default=200, ge=1)
+
+
 class LoggingConfig(_Section):
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     json_format: bool = True
@@ -131,6 +145,8 @@ class Settings(BaseSettings):
     promotion: PromotionConfig = PromotionConfig()
     orchestration: OrchestrationConfig = OrchestrationConfig()
     alerts: AlertsConfig = AlertsConfig()
+    database: DatabaseConfig = DatabaseConfig()
+    api: ApiConfig = ApiConfig()
     logging: LoggingConfig = LoggingConfig()
 
     @classmethod

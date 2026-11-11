@@ -11,6 +11,8 @@ import pandas as pd
 import pytest
 from prefect.server.api.server import create_app
 from prefect.testing.utilities import prefect_test_harness
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from bikeshare_mlops.config import get_settings
@@ -18,6 +20,7 @@ from bikeshare_mlops.models import registry
 from bikeshare_mlops.pipelines.batch_prediction import batch_prediction
 from bikeshare_mlops.pipelines.serve import watch_incoming
 from bikeshare_mlops.pipelines.training import training_pipeline
+from bikeshare_mlops.storage import repository
 from factories import corrupt_frame, make_hourly_frame
 
 pytestmark = pytest.mark.integration
@@ -30,13 +33,8 @@ def _prefect() -> Iterator[None]:
 
 
 @pytest.fixture
-def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Tous les chemins de la config redirigés vers un dossier temporaire."""
-    for key in ("data_dir", "raw_dir", "batches_dir", "incoming_dir", "processed_dir"):
-        monkeypatch.setenv(f"BIKESHARE_PATHS__{key.upper()}", str(tmp_path / key))
-    monkeypatch.setenv("BIKESHARE_PATHS__REJECTED_DIR", str(tmp_path / "rejected"))
-    monkeypatch.setenv("BIKESHARE_PATHS__REPORTS_DIR", str(tmp_path / "reports"))
-    monkeypatch.setenv("BIKESHARE_PATHS__LOGS_DIR", str(tmp_path / "logs"))
+def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, db_engine: Engine) -> Path:
+    """Dossier du test (chemins isolés par conftest), base SQLite prête, forêt réduite."""
     monkeypatch.setenv("BIKESHARE_TRAINING__MODEL__N_ESTIMATORS", "10")
     monkeypatch.setenv("BIKESHARE_TRAINING__MODEL__N_JOBS", "1")
     monkeypatch.setenv("BIKESHARE_ORCHESTRATION__RETRY_DELAY_S", "0")
@@ -49,8 +47,15 @@ def _drop_months(directory: Path, frame: pd.DataFrame) -> None:
         chunk.to_csv(directory / f"batch_{month.replace('-', '_')}.csv", index=False)
 
 
+def _last_run(engine: Engine) -> tuple[str, str | None, str | None]:
+    with Session(engine) as session:
+        run = repository.latest_pipeline_run(session)
+    assert run is not None
+    return run.state, run.outcome, run.model_version
+
+
 def _alerts(workspace: Path) -> list[dict]:
-    path = workspace / "logs" / "alerts.jsonl"
+    path = workspace / "logs_dir" / "alerts.jsonl"
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
@@ -88,7 +93,7 @@ def test_prefect_server_dependencies_are_compatible() -> None:
         assert runs, "aucun run planifié"
 
 
-def test_nominal_run_trains_registers_and_promotes(workspace: Path) -> None:
+def test_nominal_run_trains_registers_and_promotes(workspace: Path, db_engine: Engine) -> None:
     _drop_months(workspace / "incoming_dir", make_hourly_frame(days=59))
 
     summary = training_pipeline()
@@ -99,6 +104,7 @@ def test_nominal_run_trains_registers_and_promotes(workspace: Path) -> None:
     assert len(list((workspace / "processed_dir").iterdir())) == 2
     settings = get_settings()
     assert registry.version_by_alias(settings, registry.CHAMPION) == summary["version"]
+    assert _last_run(db_engine) == ("COMPLETED", "promoted", summary["version"])
 
     registry.configure_tracking(settings, settings.mlflow.ingestion_experiment_name)
     runs = mlflow.search_runs(experiment_names=[settings.mlflow.ingestion_experiment_name])
@@ -117,7 +123,7 @@ def test_nominal_run_trains_registers_and_promotes(workspace: Path) -> None:
     assert set(scored["model_version"].astype(str)) == {summary["version"]}
 
 
-def test_invalid_batch_blocks_training_and_alerts(workspace: Path) -> None:
+def test_invalid_batch_blocks_training_and_alerts(workspace: Path, db_engine: Engine) -> None:
     incoming = workspace / "incoming_dir"
     incoming.mkdir(parents=True)
     corrupt_frame(make_hourly_frame(days=31)).to_csv(incoming / "batch_invalid.csv", index=False)
@@ -125,10 +131,11 @@ def test_invalid_batch_blocks_training_and_alerts(workspace: Path) -> None:
     state = training_pipeline(return_state=True)
 
     assert state.is_failed()
-    assert (workspace / "rejected" / "batch_invalid.csv").exists()
+    assert (workspace / "rejected_dir" / "batch_invalid.csv").exists()
     assert registry.version_by_alias(get_settings(), registry.CHAMPION) is None
     alert = _alerts(workspace)[-1]
     assert alert["event"] == "pipeline_failed"
+    assert _last_run(db_engine)[0] == "FAILED"
     assert "batch_invalid" in alert["message"]
 
 

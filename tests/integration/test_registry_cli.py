@@ -23,7 +23,6 @@ def batches_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     env = {
         "BIKESHARE_MLFLOW__EXPERIMENT_NAME": "cli-exp",
-        "BIKESHARE_PATHS__REPORTS_DIR": str(tmp_path / "reports"),
         "BIKESHARE_TRAINING__MODEL__N_ESTIMATORS": "5",
         "BIKESHARE_TRAINING__MODEL__N_JOBS": "1",
     }

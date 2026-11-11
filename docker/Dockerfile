@@ -24,6 +24,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 COPY config ./config
 COPY scripts ./scripts
+COPY alembic.ini ./
+COPY migrations ./migrations
 RUN uv sync --frozen --no-dev
 
 RUN useradd --create-home --uid 1000 app \

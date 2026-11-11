@@ -122,7 +122,6 @@ def test_validate_file_reads_csv(
 def test_cli_exit_code_reflects_conformity(
     hourly_frame: pd.DataFrame, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("BIKESHARE_PATHS__REPORTS_DIR", str(tmp_path / "reports"))
     good, bad = tmp_path / "batch_ok.csv", tmp_path / "batch_ko.csv"
     hourly_frame.to_csv(good, index=False)
     hourly_frame.drop(columns=["cnt"]).to_csv(bad, index=False)

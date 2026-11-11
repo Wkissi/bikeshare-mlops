@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from bikeshare_mlops.config import CONFIG_FILE_ENV, get_settings
+from bikeshare_mlops.config import CONFIG_FILE_ENV, PathsConfig, get_settings
 
 PATHS = (
     "paths: {data_dir: d, raw_dir: d/r, batches_dir: d/b, incoming_dir: d/i, processed_dir: d/p,"
@@ -16,7 +16,9 @@ PATHS = (
 DATA = "data: {source_url: 'https://example.test/a.zip', archive_sha256: '" + "a" * 64 + "'}\n"
 
 
-def test_loads_versioned_yaml() -> None:
+def test_loads_versioned_yaml(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in PathsConfig.model_fields:  # retire les chemins isolés posés par conftest
+        monkeypatch.delenv(f"BIKESHARE_PATHS__{key.upper()}")
     settings = get_settings()
     assert settings.project_name == "bikeshare-mlops"
     assert settings.paths.batches_dir == Path("data/batches")
