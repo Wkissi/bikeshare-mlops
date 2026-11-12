@@ -303,7 +303,7 @@ Captures à déposer dans `docs/img/` (liste et mode opératoire : [`docs/img/RE
 | Runs Prefect (déclenchement à l'arrivée des lots, échec du lot invalide) | ![](img/01-prefect-runs.png) |
 | Graphe d'un `training_pipeline` | ![](img/02-prefect-flow-graph.png) |
 | Run MLflow : paramètres, métriques, hash des données, commit | ![](img/03-mlflow-run.png) |
-| Artefacts MLflow : graphiques et modèle | ![](img/04-mlflow-artifacts.png) |
+| Artefacts MLflow : graphiques d'évaluation | ![](img/04-mlflow-artifacts.png) |
 | Registre : alias et décisions de promotion | ![](img/05-mlflow-registry.png) |
 | Dashboard Grafana en fonctionnement nominal | ![](img/06-grafana-nominal.png) |
 | Dashboard Grafana pendant la panne PostgreSQL | ![](img/07-grafana-incident.png) |

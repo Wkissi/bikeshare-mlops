@@ -14,6 +14,7 @@ FILES ?= data/incoming/*.csv
 COMPOSE := docker compose
 export CODE_VERSION := $(shell git rev-parse --short HEAD)
 export MLFLOW_DISABLE_AGENT_HINT := 1
+export PYTHONIOENCODING := utf-8
 train-local: DATA_DIR ?= data/batches
 train promote: DATA_DIR ?= data/processed
 pipeline predict-batch: export PREFECT_API_URL := http://localhost:4200/api
