@@ -108,6 +108,12 @@ make load-test-fine       # optionnel (~9 min) : paliers fins sur les configurat
 
 `make help` liste toutes les commandes. `make down` arrête la stack (les volumes sont conservés).
 
+> **Durée de `make test` sous Windows :** compter environ 4 à 5 minutes (4 min 23 mesurées sur un
+> clone propre), contre moins de 2 minutes sous Linux en CI. L'écart vient des tests
+> d'intégration des pipelines (`tests/integration/test_pipelines.py`), qui démarrent un serveur
+> Prefect temporaire (`prefect_test_harness`) dont le lancement est nettement plus lent sous
+> Windows. Les tests ne sont pas bloqués : il suffit d'attendre la fin.
+
 ## Services
 
 | Service | URL | Contenu |
